@@ -4,13 +4,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 import it.polito.tdp.extflightdelays.model.Airline;
 import it.polito.tdp.extflightdelays.model.Airport;
 import it.polito.tdp.extflightdelays.model.Flight;
+import it.polito.tdp.extflightdelays.model.Volo;
 
 public class ExtFlightDelaysDAO {
 
@@ -89,6 +88,41 @@ public class ExtFlightDelaysDAO {
 			e.printStackTrace();
 			System.out.println("Errore connessione al database");
 			throw new RuntimeException("Error Connection Database");
+		}
+	}
+	
+	public List<Volo> getVoli(Map<Integer, Airport> mappaAeroporti) {
+		
+		final String sql = "SELECT distinct origin_airport_id, destination_airport_id, AVG(DISTANCE) AS distanzaMedia "
+				+ "FROM flights "
+				+ "GROUP BY origin_airport_id, destination_airport_id";
+		List<Volo> voli = new LinkedList<Volo>();
+		
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet rs = st.executeQuery();
+			
+			while(rs.next()) {
+				Airport aPart = mappaAeroporti.get(rs.getInt("origin_airport_id"));
+				Airport aArr = mappaAeroporti.get(rs.getInt("destination_airport_id"));
+				double disMedia = rs.getDouble("distanzaMedia");
+				Volo volo = new Volo(aPart, aArr, disMedia);
+				for(Volo v : voli) {
+					if(v.getPartenza().equals(aArr) && v.getArrivo().equals(aPart)) {
+						v.setDistanzaMedia((v.getDistanzaMedia()+disMedia)/2);
+						break;
+					}
+				}
+				voli.add(volo);
+			}
+			
+			conn.close();
+			return voli;
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
 		}
 	}
 }
